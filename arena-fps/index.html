@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>INSTANT — Arena Duel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <span class="brand-word">INSTANT</span>
+      <span class="brand-sub">ARENA</span>
+    </header>
+
+    <main id="stage">
+      <section id="start-screen" class="panel start" aria-label="Start screen">
+        <div class="start-atmosphere" aria-hidden="true">
+          <div class="beam beam-a"></div>
+          <div class="beam beam-b"></div>
+          <div class="scanline"></div>
+          <div class="floor-grid"></div>
+        </div>
+        <div class="start-copy">
+          <p class="eyebrow animate-in">1v1 · keyboard duel</p>
+          <h1 class="title animate-in delay-1">INSTANT</h1>
+          <p class="tagline animate-in delay-2">One arena. One rival. Hit hard or get hit.</p>
+          <div class="cta-row animate-in delay-3">
+            <button type="button" id="btn-start" class="btn primary">Enter Arena</button>
+          </div>
+          <p class="controls-hint animate-in delay-4">
+            <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>←</kbd><kbd>→</kbd> turn · <kbd>Space</kbd> fire
+          </p>
+        </div>
+      </section>
+
+      <section id="game-screen" class="panel game hidden" aria-label="Game">
+        <canvas id="game-canvas"></canvas>
+        <div id="hud" class="hud">
+          <div class="hud-bars">
+            <div class="bar player">
+              <span class="label">YOU</span>
+              <div class="track"><div id="hp-player" class="fill"></div></div>
+              <span id="hp-player-num" class="num">100</span>
+            </div>
+            <div class="bar enemy">
+              <span class="label">RIVAL</span>
+              <div class="track"><div id="hp-enemy" class="fill"></div></div>
+              <span id="hp-enemy-num" class="num">100</span>
+            </div>
+          </div>
+          <div class="crosshair" aria-hidden="true">
+            <span class="ch-h"></span>
+            <span class="ch-v"></span>
+            <span class="ch-dot"></span>
+          </div>
+          <div class="ammo-row">
+            <span id="ammo-label">READY</span>
+            <span id="fire-flash" class="fire-flash" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div id="hit-vignette" class="hit-vignette" aria-hidden="true"></div>
+      </section>
+
+      <section id="end-screen" class="panel end hidden" aria-label="Result">
+        <div class="end-card">
+          <p id="end-eyebrow" class="eyebrow">Match over</p>
+          <h2 id="end-title" class="end-title">Victory</h2>
+          <p id="end-copy" class="tagline">The arena goes quiet.</p>
+          <button type="button" id="btn-restart" class="btn primary">Fight Again</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>Arrow keys + Space · WASD optional</span>
+    </footer>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="game.js"></script>
+</body>
+</html>
