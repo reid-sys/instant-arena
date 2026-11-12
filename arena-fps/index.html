@@ -81,14 +81,57 @@
     </footer>
   </div>
 
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-    }
-  }
+  <script src="vendor/three.min.js"></script>
+  <script src="game.js"></script>
+  <script>
+    // Non-module fallback wiring so Enter / click work once the game module is ready.
+    (function () {
+      function tryStart() {
+        if (window.__INSTANT_ARENA__ && typeof window.__INSTANT_ARENA__.startGame === "function") {
+          window.__INSTANT_ARENA__.startGame();
+          return true;
+        }
+        return false;
+      }
+      function bind() {
+        var btn = document.getElementById("btn-start");
+        var restart = document.getElementById("btn-restart");
+        if (btn) {
+          btn.addEventListener("click", function () {
+            if (!tryStart()) {
+              btn.textContent = "Loading…";
+              var n = 0;
+              var id = setInterval(function () {
+                n += 1;
+                if (tryStart() || n > 40) {
+                  clearInterval(id);
+                  if (!window.__INSTANT_ARENA__) {
+                    btn.textContent = "Load failed — refresh";
+                  } else {
+                    btn.textContent = "Enter Arena";
+                  }
+                }
+              }, 100);
+            }
+          });
+        }
+        if (restart) {
+          restart.addEventListener("click", function () {
+            if (window.__INSTANT_ARENA__ && window.__INSTANT_ARENA__.restart) {
+              window.__INSTANT_ARENA__.restart();
+            }
+          });
+        }
+        window.addEventListener("keydown", function (e) {
+          if (e.code === "Enter" && document.getElementById("start-screen") &&
+              !document.getElementById("start-screen").classList.contains("hidden")) {
+            tryStart();
+          }
+        });
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+      else bind();
+    })();
   </script>
-  <script type="module" src="game.js"></script>
 </body>
 </html>

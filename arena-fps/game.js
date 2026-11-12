@@ -1,12 +1,12 @@
-import * as THREE from "three";
+// three provided as global THREE
 
 const MAX_HP = 100;
 const PLAYER_SPEED = 9;
 const TURN_SPEED = 2.4;
 const BULLET_SPEED = 42;
 const FIRE_COOLDOWN = 0.32;
-const AI_FIRE_COOLDOWN = 0.55;
-const BULLET_DAMAGE = 14;
+const AI_FIRE_COOLDOWN = 0.75;
+const BULLET_DAMAGE = 12;
 const PLAYER_RADIUS = 0.55;
 const ARENA_HALF = 18;
 
@@ -60,20 +60,17 @@ function setHud() {
 }
 
 function makeMat(color, opts = {}) {
-  return new THREE.MeshStandardMaterial({
+  // Lambert is friendlier on software WebGL than Standard + PBR.
+  return new THREE.MeshLambertMaterial({
     color,
-    roughness: opts.roughness ?? 0.72,
-    metalness: opts.metalness ?? 0.08,
     emissive: opts.emissive ?? 0x000000,
-    emissiveIntensity: opts.emissiveIntensity ?? 0,
+    emissiveIntensity: opts.emissiveIntensity ?? 1,
   });
 }
 
 function addBox(w, h, d, x, y, z, mat, colliders) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
   scene.add(mesh);
   if (colliders) {
     colliders.push({
@@ -95,28 +92,27 @@ function buildArena() {
   walls = [];
   covers = [];
 
-  const floorMat = makeMat(0x1a2a24, { roughness: 0.95 });
+  const floorMat = makeMat(0x2a4038, { roughness: 0.95 });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(ARENA_HALF * 2.4, ARENA_HALF * 2.4), floorMat);
   floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
   scene.add(floor);
 
   const grid = new THREE.GridHelper(ARENA_HALF * 2.2, 22, 0x3d5a48, 0x243830);
   grid.position.y = 0.02;
   scene.add(grid);
 
-  const wallMat = makeMat(0x2a3d36, { roughness: 0.85 });
+  const wallMat = makeMat(0x3a5348, { roughness: 0.85 });
   const trimMat = makeMat(0xb8f24a, {
     roughness: 0.4,
     metalness: 0.35,
-    emissive: 0x5a8a20,
-    emissiveIntensity: 0.45,
+    emissive: 0xb8f24a,
+    emissiveIntensity: 0.65,
   });
-  const coverMat = makeMat(0x314840, { roughness: 0.7 });
+  const coverMat = makeMat(0x455e54, { roughness: 0.7 });
   const accentMat = makeMat(0xff6a3d, {
     roughness: 0.45,
-    emissive: 0xff3d1f,
-    emissiveIntensity: 0.35,
+    emissive: 0xff6a3d,
+    emissiveIntensity: 0.7,
   });
 
   const t = 1.2;
@@ -175,7 +171,6 @@ function createFighter(color, emissive) {
     makeMat(color, { emissive, emissiveIntensity: 0.25, roughness: 0.55 })
   );
   body.position.y = 1.05;
-  body.castShadow = true;
   group.add(body);
 
   const head = new THREE.Mesh(
@@ -183,7 +178,6 @@ function createFighter(color, emissive) {
     makeMat(0xe8f0ea, { roughness: 0.4 })
   );
   head.position.y = 1.85;
-  head.castShadow = true;
   group.add(head);
 
   const visor = new THREE.Mesh(
@@ -404,10 +398,11 @@ function updatePlayer(dt) {
 
   player.rotation.y += turn * TURN_SPEED * dt;
 
+  // Three.js yaw: look dir is (-sin(y), 0, -cos(y))
   const sin = Math.sin(player.rotation.y);
   const cos = Math.cos(player.rotation.y);
-  const mx = (forward * sin + strafe * cos) * PLAYER_SPEED * dt;
-  const mz = (forward * cos - strafe * sin) * PLAYER_SPEED * dt;
+  const mx = (-forward * sin + strafe * cos) * PLAYER_SPEED * dt;
+  const mz = (-forward * cos - strafe * sin) * PLAYER_SPEED * dt;
   player.position.x += mx;
   player.position.z += mz;
   resolveCircleObstacles(player.position, PLAYER_RADIUS, allObstacles());
@@ -519,10 +514,11 @@ function resetMatch() {
   playerCooldown = 0;
   enemyCooldown = 0.8;
   player.position.set(0, 0, 12);
-  player.rotation.y = Math.PI;
-  enemy.position.set(0, 0, -12);
+  player.rotation.y = 0;
+  enemy.position.set(2.5, 0, -8);
   enemy.rotation.y = 0;
   camera.position.set(player.position.x, 1.65, player.position.z);
+  camera.rotation.order = "YXZ";
   camera.rotation.set(0, player.rotation.y, 0);
   setHud();
   hitVignette.classList.remove("on");
@@ -530,18 +526,22 @@ function resetMatch() {
 }
 
 function initThree() {
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    powerPreference: "high-performance",
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setSize(gameScreen.clientWidth, gameScreen.clientHeight, false);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // Shadows off: cloud VMs often use software WebGL where shadow maps stall.
+  renderer.shadowMap.enabled = false;
+  if ("outputColorSpace" in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.35;
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0b1411);
-  scene.fog = new THREE.FogExp2(0x0f1c18, 0.028);
+  scene.background = new THREE.Color(0x15241f);
+  scene.fog = new THREE.FogExp2(0x1a2e28, 0.016);
 
   camera = new THREE.PerspectiveCamera(
     72,
@@ -552,39 +552,37 @@ function initThree() {
 
   clock = new THREE.Clock();
 
-  const hemi = new THREE.HemisphereLight(0x7ee7d4, 0x1a100c, 0.55);
+  scene.add(new THREE.AmbientLight(0x6a8a7a, 0.85));
+  const hemi = new THREE.HemisphereLight(0xb8f0e0, 0x3a2818, 1.1);
   scene.add(hemi);
-  const key = new THREE.DirectionalLight(0xffe0c2, 1.15);
+  const key = new THREE.DirectionalLight(0xfff0dd, 1.6);
   key.position.set(8, 16, 6);
-  key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
-  key.shadow.camera.near = 1;
-  key.shadow.camera.far = 40;
-  key.shadow.camera.left = -22;
-  key.shadow.camera.right = 22;
-  key.shadow.camera.top = 22;
-  key.shadow.camera.bottom = -22;
   scene.add(key);
-  const fill = new THREE.PointLight(0xb8f24a, 0.55, 40);
+  const fill = new THREE.PointLight(0xb8f24a, 1.2, 50);
   fill.position.set(-10, 5, -6);
   scene.add(fill);
-  const fill2 = new THREE.PointLight(0xff6a3d, 0.4, 35);
+  const fill2 = new THREE.PointLight(0xff6a3d, 1.0, 45);
   fill2.position.set(10, 4, 8);
   scene.add(fill2);
+  const rim = new THREE.DirectionalLight(0x7ee7d4, 0.55);
+  rim.position.set(-6, 8, -10);
+  scene.add(rim);
 
   buildArena();
 
   player = new THREE.Object3D();
+  // Face -Z toward the rival at the far end
   player.position.set(0, 0, 12);
-  player.rotation.y = Math.PI;
+  player.rotation.y = 0;
   scene.add(player);
 
-  enemy = createFighter(0x3a4a44, 0xff6a3d);
-  enemy.position.set(0, 0, -12);
+  enemy = createFighter(0x4a5a54, 0xff6a3d);
+  // Start closer so the rival is visible from spawn
+  enemy.position.set(2.5, 0, -8);
   scene.add(enemy);
 
-  // Hide player body from FPS cam — only camera
   camera.position.set(player.position.x, 1.65, player.position.z);
+  camera.rotation.order = "YXZ";
   camera.rotation.y = player.rotation.y;
 }
 
@@ -624,20 +622,30 @@ function onKeyUp(e) {
   keys.delete(e.code);
 }
 
-document.getElementById("btn-start").addEventListener("click", startGame);
-document.getElementById("btn-restart").addEventListener("click", () => {
+function restartMatch() {
   endScreen.classList.add("hidden");
+  gameScreen.classList.remove("hidden");
+  if (!renderer) {
+    startGame();
+    return;
+  }
   resetMatch();
   state = "playing";
   clock.getDelta();
-});
+}
+
+document.getElementById("btn-start").addEventListener("click", startGame);
+document.getElementById("btn-restart").addEventListener("click", restartMatch);
 
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("keyup", onKeyUp);
 
-// Expose for automated smoke checks
+// Expose for automated smoke checks + HTML bootstrap
 window.__INSTANT_ARENA__ = {
   startGame,
+  restart: restartMatch,
   getState: () => state,
   getHp: () => ({ player: playerHp, enemy: enemyHp }),
 };
+
+console.info("[INSTANT] arena module ready");
